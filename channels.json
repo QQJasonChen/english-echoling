@@ -1,0 +1,30 @@
+{
+  "channels": [
+    {"handle": "@aliabdaal", "name": "Ali Abdaal", "type": "productivity", "content_style": "natural", "subtitle_type": "auto", "description": "Productivity, clear British accent, storytelling"},
+        {"handle": "@AlexHormozi", "name": "Alex Hormozi", "type": "business", "content_style": "natural", "subtitle_type": "auto", "description": "Business, persuasive speaking, high energy"},
+    {"handle": "@TheDiaryOfACEO", "name": "The Diary of a CEO", "type": "podcast", "content_style": "natural", "subtitle_type": "auto", "description": "Steven Bartlett, interviews, British"},
+    {"handle": "@joerogan", "name": "Joe Rogan", "type": "podcast", "content_style": "natural", "subtitle_type": "auto", "description": "Long-form conversations, various guests including Naval"},
+    {"handle": "@lexfridman", "name": "Lex Fridman", "type": "podcast", "content_style": "formal", "subtitle_type": "auto", "description": "Deep intellectual discourse, Naval interviews"},
+    {"handle": "@TED", "name": "TED", "type": "educational", "content_style": "formal", "subtitle_type": "manual", "description": "TED Talks - clear articulation"},
+    {"handle": "@hubaborspodcast", "name": "Huberman Lab", "type": "podcast", "content_style": "instructional", "subtitle_type": "auto", "description": "Science podcast, detailed explanations"},
+    {"handle": "@veritasium", "name": "Veritasium", "type": "educational", "content_style": "natural", "subtitle_type": "auto", "description": "Science videos, clear explanations"},
+    {"handle": "@mkbhd", "name": "MKBHD", "type": "tech", "content_style": "natural", "subtitle_type": "auto", "description": "Tech reviews, clear articulation"},
+    {"handle": "@AndreHub", "name": "Andrew Huberman Clips", "type": "podcast", "content_style": "instructional", "subtitle_type": "auto", "description": "Short science clips"},
+    {"handle": "@ChrisWillx", "name": "Chris Williamson", "type": "podcast", "content_style": "natural", "subtitle_type": "auto", "description": "Modern Wisdom podcast"}
+  ],
+  "contentStyles": {
+    "natural": "Natural Conversation",
+    "instructional": "Teaching Style",
+    "formal": "Formal Speech"
+  },
+  "accentTypes": {
+    "american": "American English",
+    "british": "British English",
+    "mixed": "Mixed/International"
+  },
+  "settings": {
+    "maxVideosPerChannel": 50,
+    "subtitleLanguage": "en",
+    "minSubtitleLength": 3
+  }
+}

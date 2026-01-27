@@ -1,0 +1,29 @@
+{
+  "name": "english-echoling",
+  "version": "1.0.0",
+  "description": "Advanced English learning with Shadowing/Echoling practice using real YouTube clips",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "collect": "node scripts/collect-subtitles.js",
+    "init-db": "node scripts/init-db.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "english",
+    "language-learning",
+    "subtitles",
+    "shadowing",
+    "echoling",
+    "pronunciation"
+  ],
+  "author": "QQ Chen",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "groq-sdk": "^0.37.0",
+    "multer": "^2.0.2"
+  }
+}

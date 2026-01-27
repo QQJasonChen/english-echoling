@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>English Echoling - Advanced Shadowing Practice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .clip-active {
+      background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+    }
+    .channel-podcast { border-left-color: #8b5cf6; }
+    .channel-educational { border-left-color: #22c55e; }
+    .channel-entertainment { border-left-color: #f59e0b; }
+    .channel-news { border-left-color: #ef4444; }
+    .channel-tech { border-left-color: #06b6d4; }
+    .channel-learning { border-left-color: #ec4899; }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+    }
+    .playing { animation: pulse-border 2s infinite; }
+
+    /* Shadowing mode styles */
+    @keyframes recording-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .recording-indicator {
+      animation: recording-pulse 1s infinite;
+    }
+
+    /* Waveform visualization */
+    .waveform-bar {
+      transition: height 0.1s ease;
+    }
+
+    /* Progress ring for echo countdown */
+    .progress-ring {
+      transition: stroke-dashoffset 0.1s linear;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <!-- Header -->
+  <header class="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-blue-500">🎯 English Echoling</h1>
+        <div class="flex-1">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search English phrases... (e.g. 'actually', 'you know', 'I think')"
+            class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-400"
+          />
+        </div>
+        <div id="learningStats" class="text-sm text-gray-400 flex gap-3"></div>
+      </div>
+
+      <!-- Filters Row -->
+      <div class="flex items-center gap-4 mt-3 flex-wrap">
+        <!-- Content Style Filter -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-500">Style:</span>
+          <div class="flex gap-1" id="styleFilter">
+            <button data-style="natural" class="style-btn px-3 py-1 text-xs rounded-full bg-blue-600 text-white">
+              🗣️ Natural
+            </button>
+            <button data-style="instructional" class="style-btn px-3 py-1 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600">
+              📚 Teaching
+            </button>
+            <button data-style="formal" class="style-btn px-3 py-1 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600">
+              🎤 Formal
+            </button>
+            <button data-style="all" class="style-btn px-3 py-1 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600">
+              All
+            </button>
+          </div>
+        </div>
+
+        <!-- Shadowing Mode Toggle -->
+        <div class="flex items-center gap-2 ml-auto">
+          <button id="shadowingModeBtn" class="px-4 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500 transition flex items-center gap-2">
+            <span>🎙️</span>
+            <span>Shadowing Mode</span>
+          </button>
+        </div>
+
+        <div id="stats" class="text-xs text-gray-500"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Video Player -->
+      <div class="lg:col-span-2">
+        <div class="bg-gray-800 rounded-lg overflow-hidden">
+          <div id="playerContainer" class="aspect-video bg-black flex items-center justify-center">
+            <div class="text-gray-500 text-center p-8">
+              <p class="text-4xl mb-4">🇬🇧🇺🇸</p>
+              <p>Search English phrases to start learning</p>
+              <p class="text-sm mt-2">Advanced shadowing practice with real content</p>
+            </div>
+          </div>
+
+          <!-- Subtitle Display -->
+          <div class="bg-gray-700">
+            <!-- English subtitle with word highlighting -->
+            <div id="currentSubtitle" class="px-4 pt-4 pb-2 text-center text-xl font-medium text-blue-300">
+              <span class="text-gray-500">Waiting for playback...</span>
+            </div>
+            <!-- Phonetic hint (optional) -->
+            <div id="phoneticHint" class="px-4 pb-2 text-center text-sm text-gray-400 hidden">
+              <!-- IPA pronunciation will show here -->
+            </div>
+            <!-- Chinese translation -->
+            <div id="translatedSubtitle" class="px-4 pb-2 text-center text-base">
+              <span class="text-gray-500">—</span>
+            </div>
+            <!-- Clip context -->
+            <div id="clipContext" class="px-4 pb-3 text-center text-xs border-t border-gray-600 pt-2">
+              <span class="text-gray-500">Video info will appear here</span>
+            </div>
+          </div>
+
+          <!-- Shadowing Mode Panel (hidden by default) -->
+          <div id="shadowingPanel" class="hidden bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-t border-purple-500/30">
+            <div class="p-4">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div id="echoCountdown" class="relative w-12 h-12">
+                    <svg class="w-12 h-12" viewBox="0 0 48 48">
+                      <circle cx="24" cy="24" r="20" fill="none" stroke="#374151" stroke-width="4"/>
+                      <circle id="countdownRing" class="progress-ring" cx="24" cy="24" r="20" fill="none" stroke="#8b5cf6" stroke-width="4" stroke-dasharray="125.6" stroke-dashoffset="0"/>
+                    </svg>
+                    <span id="countdownNumber" class="absolute inset-0 flex items-center justify-center text-lg font-bold">3</span>
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-purple-300">Shadowing Mode</div>
+                    <div id="shadowingStatus" class="text-xs text-gray-400">Listen → Echo → Compare</div>
+                  </div>
+                </div>
+
+                <!-- Recording indicator -->
+                <div id="recordingIndicator" class="hidden flex items-center gap-2">
+                  <div class="w-3 h-3 bg-red-500 rounded-full recording-indicator"></div>
+                  <span class="text-red-400 text-sm">Recording...</span>
+                </div>
+
+                <!-- Waveform visualization -->
+                <div id="waveformContainer" class="flex items-center gap-0.5 h-8 hidden">
+                  <!-- Bars will be generated by JS -->
+                </div>
+              </div>
+
+              <!-- Shadowing Controls -->
+              <div class="flex items-center gap-3">
+                <button id="listenBtn" class="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-500 rounded-lg transition text-sm flex items-center justify-center gap-2">
+                  <span>👂</span> Listen
+                </button>
+                <button id="echoBtn" class="flex-1 py-2 px-4 bg-purple-600 hover:bg-purple-500 rounded-lg transition text-sm flex items-center justify-center gap-2" disabled>
+                  <span>🎙️</span> Echo (Record)
+                </button>
+                <button id="compareBtn" class="flex-1 py-2 px-4 bg-green-600 hover:bg-green-500 rounded-lg transition text-sm flex items-center justify-center gap-2" disabled>
+                  <span>🔄</span> Compare
+                </button>
+              </div>
+
+              <!-- Echo Playback (recorded audio) -->
+              <div id="echoPlaybackSection" class="mt-4 hidden">
+                <div class="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                  <button id="playEchoBtn" class="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm">
+                    ▶️ Play Your Echo
+                  </button>
+                  <button id="playOriginalBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm">
+                    🔊 Play Original
+                  </button>
+                </div>
+
+                <!-- AI Pronunciation Score -->
+                <div id="pronunciationScore" class="mt-3">
+                  <!-- Score will be displayed here by JS -->
+                </div>
+                <div id="pronunciationFeedback" class="mt-2">
+                  <!-- Feedback will be displayed here by JS -->
+                </div>
+              </div>
+
+              <!-- Shadowing Tips -->
+              <div class="mt-3 text-xs text-gray-400">
+                <details>
+                  <summary class="cursor-pointer hover:text-gray-300">💡 Shadowing Tips</summary>
+                  <ul class="mt-2 space-y-1 pl-4">
+                    <li>• Listen to the rhythm and intonation, not just words</li>
+                    <li>• Start speaking slightly after the audio begins</li>
+                    <li>• Match the speed and emotion of the speaker</li>
+                    <li>• Focus on connected speech patterns</li>
+                  </ul>
+                </details>
+              </div>
+            </div>
+          </div>
+
+          <!-- Normal Controls -->
+          <div class="p-4 flex items-center justify-between bg-gray-800 border-t border-gray-700">
+            <div class="flex gap-2">
+              <button id="prevBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm" title="Previous (P)">
+                ⏮
+              </button>
+              <button id="replayBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm" title="Replay (R)">
+                🔄
+              </button>
+              <button id="loopBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm text-gray-400" title="Loop OFF (L)">
+                🔁
+              </button>
+              <button id="randomBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm" title="Random (D)">
+                🎲
+              </button>
+              <button id="nextBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition text-sm" title="Next (N)">
+                Next ⏭
+              </button>
+            </div>
+            <!-- Speed Control -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">Speed:</span>
+              <div id="speedControl" class="flex gap-1">
+                <button data-speed="0.5" class="speed-btn px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">0.5x</button>
+                <button data-speed="0.75" class="speed-btn px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">0.75x</button>
+                <button data-speed="1" class="speed-btn px-2 py-1 text-xs rounded bg-blue-600 text-white">1x</button>
+                <button data-speed="1.25" class="speed-btn px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">1.25x</button>
+              </div>
+            </div>
+            <div class="text-sm text-gray-400">
+              <span id="clipCounter">0 / 0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Keyboard shortcuts -->
+        <div class="mt-4 text-sm text-gray-500 text-center">
+          <kbd class="bg-gray-700 px-2 py-1 rounded">Space</kbd> Play/Pause ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">N</kbd> Next ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">P</kbd> Prev ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">R</kbd> Replay ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">L</kbd> Loop ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">S</kbd> Shadow ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">J</kbd> Practice Next ·
+          <kbd class="bg-gray-700 px-2 py-1 rounded">F</kbd> Fav
+        </div>
+      </div>
+
+      <!-- Results List -->
+      <div class="lg:col-span-1">
+        <!-- Tab Navigation -->
+        <div class="bg-gray-800 rounded-t-lg border-b border-gray-700">
+          <div class="flex">
+            <button id="tabSearch" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-blue-400 border-b-2 border-blue-400">
+              🔍 Search
+            </button>
+            <button id="tabFavorites" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-white">
+              ⭐ Favorites
+            </button>
+            <button id="tabPractice" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-white">
+              📚 Practice
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-b-lg">
+          <!-- Search Tab -->
+          <div id="searchTab">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+              <h2 class="font-semibold">Search Results</h2>
+              <span id="resultCount" class="text-sm text-gray-400">0 results</span>
+            </div>
+            <div id="resultsList" class="max-h-[550px] overflow-y-auto divide-y divide-gray-700">
+              <div class="p-8 text-center text-gray-500">
+                <p>Search for English phrases...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Favorites Tab -->
+          <div id="favoritesTab" class="hidden">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+              <h2 class="font-semibold">⭐ My Favorites</h2>
+              <span id="favCount" class="text-sm text-gray-400">0 clips</span>
+            </div>
+            <div id="favoritesList" class="max-h-[550px] overflow-y-auto divide-y divide-gray-700">
+              <div class="p-8 text-center text-gray-500">
+                <p>No favorites yet</p>
+                <p class="text-sm mt-2">Press <kbd class="bg-gray-700 px-2 py-1 rounded">F</kbd> to favorite current clip</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Practice Tab (Pronunciation Topics) -->
+          <div id="practiceTab" class="hidden">
+            <div class="p-4">
+              <p class="text-sm text-gray-400 mb-3">🎯 Pronunciation & Fluency Practice</p>
+
+              <div class="space-y-2 max-h-[500px] overflow-y-auto">
+                <!-- Connected Speech -->
+                <div class="text-xs text-blue-400 font-semibold mt-2 mb-1">🔗 Connected Speech</div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="reductions">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Reductions 縮讀</span>
+                    <span class="text-xs text-green-400">Essential</span>
+                  </div>
+                  <div class="text-xs text-gray-500">gonna, wanna, gotta, kinda...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="linking">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Linking 連音</span>
+                    <span class="text-xs text-green-400">Essential</span>
+                  </div>
+                  <div class="text-xs text-gray-500">kind of, sort of, a lot of...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="fillers">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Fillers 填充詞</span>
+                    <span class="text-xs text-blue-400">Natural</span>
+                  </div>
+                  <div class="text-xs text-gray-500">you know, I mean, like, well...</div>
+                </div>
+
+                <!-- Common Expressions -->
+                <div class="text-xs text-blue-400 font-semibold mt-3 mb-1">💬 Expressions</div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="opinions">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Opinions 表達意見</span>
+                    <span class="text-xs text-purple-400">Fluency</span>
+                  </div>
+                  <div class="text-xs text-gray-500">I think, in my opinion, honestly...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="reactions">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Reactions 反應</span>
+                    <span class="text-xs text-purple-400">Fluency</span>
+                  </div>
+                  <div class="text-xs text-gray-500">really, no way, seriously, exactly...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="transitions">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Transitions 轉折</span>
+                    <span class="text-xs text-purple-400">Fluency</span>
+                  </div>
+                  <div class="text-xs text-gray-500">anyway, by the way, speaking of...</div>
+                </div>
+
+                <!-- Pronunciation Focus -->
+                <div class="text-xs text-blue-400 font-semibold mt-3 mb-1">🎤 Pronunciation</div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="th_sounds">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">TH Sounds θ/ð</span>
+                    <span class="text-xs text-orange-400">Difficult</span>
+                  </div>
+                  <div class="text-xs text-gray-500">the, this, that, think, through...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="r_sounds">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">R Sounds</span>
+                    <span class="text-xs text-orange-400">Difficult</span>
+                  </div>
+                  <div class="text-xs text-gray-500">really, right, world, girl...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="vowels">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Vowel Distinctions</span>
+                    <span class="text-xs text-orange-400">Difficult</span>
+                  </div>
+                  <div class="text-xs text-gray-500">ship/sheep, full/fool, bed/bad...</div>
+                </div>
+
+                <!-- Intonation -->
+                <div class="text-xs text-blue-400 font-semibold mt-3 mb-1">🎵 Intonation</div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="questions">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Question Intonation</span>
+                    <span class="text-xs text-cyan-400">Pattern</span>
+                  </div>
+                  <div class="text-xs text-gray-500">Rising vs falling patterns...</div>
+                </div>
+
+                <div class="practice-topic p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600" data-topic="emphasis">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Word Stress & Emphasis</span>
+                    <span class="text-xs text-cyan-400">Pattern</span>
+                  </div>
+                  <div class="text-xs text-gray-500">Sentence stress patterns...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>
