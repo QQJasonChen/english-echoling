@@ -1,3 +1,5 @@
+require('dotenv').config(); // Load .env file (local only)
+
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
@@ -393,6 +395,193 @@ app.get('/api/stats', (req, res) => {
   } catch (error) {
     console.error('Stats error:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ==========================================
+// Gemini AI Translation & Explanation APIs
+// ==========================================
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+// Free translation using MyMemory API (fallback)
+async function translateWithMyMemory(text) {
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-TW`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('MyMemory API error');
+  const data = await response.json();
+  if (data.responseStatus === 200 && data.responseData?.translatedText) {
+    return data.responseData.translatedText;
+  }
+  throw new Error('MyMemory translation failed');
+}
+
+// Translation with Gemini (higher quality)
+async function translateWithGemini(text) {
+  if (!GEMINI_API_KEY) throw new Error('No Gemini API key');
+
+  const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `Translate this English text to Traditional Chinese (繁體中文, Taiwan style). Return ONLY the translation, nothing else:\n\n${text}`
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 256
+      }
+    })
+  });
+
+  if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+}
+
+app.post('/api/translate', async (req, res) => {
+  const { text } = req.body;
+
+  if (!text || text.trim().length === 0) {
+    return res.json({ translation: '' });
+  }
+
+  try {
+    // Try Gemini first (better quality), fallback to MyMemory
+    let translation;
+    if (GEMINI_API_KEY) {
+      try {
+        translation = await translateWithGemini(text);
+      } catch (e) {
+        console.log('Gemini failed, trying MyMemory:', e.message);
+        translation = await translateWithMyMemory(text);
+      }
+    } else {
+      translation = await translateWithMyMemory(text);
+    }
+
+    res.json({ translation });
+  } catch (error) {
+    console.error('Translation error:', error);
+    res.status(500).json({ error: 'Translation failed' });
+  }
+});
+
+// AI Word Explanation endpoint
+app.post('/api/explain', async (req, res) => {
+  const { word } = req.body;
+
+  if (!word || word.trim().length === 0) {
+    return res.json({ explanation: '' });
+  }
+
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'AI service not configured' });
+  }
+
+  try {
+    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are an English teacher. Explain the word/phrase "${word}" for someone learning English (intermediate level).
+
+Use this format:
+📝 ${word}
+🔤 Part of speech: [noun/verb/adjective/adverb/phrase/etc.]
+📖 Meaning: [explain in simple English, max 20 words]
+✏️ Example: [a simple sentence using this word]
+🔗 Related: [2-3 related words or phrases]
+🎯 Usage tip: [when/how to use this naturally]
+
+Answer in English only!`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 300
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    res.json({ explanation });
+  } catch (error) {
+    console.error('Gemini explanation error:', error);
+    res.status(500).json({ error: 'Explanation failed' });
+  }
+});
+
+// AI Pronunciation Assessment endpoint (Gemini-based)
+app.post('/api/assess-pronunciation', async (req, res) => {
+  const { original, spoken } = req.body;
+
+  if (!original || !spoken) {
+    return res.json({ error: 'Missing original or spoken text' });
+  }
+
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'AI service not configured' });
+  }
+
+  try {
+    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are an English pronunciation coach. Evaluate the student's pronunciation.
+
+Original (correct): "${original}"
+Student said: "${spoken}"
+
+Please respond in this format (Traditional Chinese):
+📊 分數: [0-100]
+${spoken.toLowerCase() === original.toLowerCase() ? '🎉 完美！發音正確！' : `
+🎯 問題: [Point out pronunciation errors]
+💡 建議: [How to improve, in simple words]
+🔊 正確發音提示: [IPA or phonetic hint for the difficult parts]`}
+
+Notes:
+- If both are identical (case-insensitive), give 100
+- Focus on word accuracy
+- Minor punctuation differences don't count`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 300
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const assessment = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    // Extract score from response
+    const scoreMatch = assessment.match(/分數[：:]\s*(\d+)/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : 50;
+
+    res.json({ assessment, score });
+  } catch (error) {
+    console.error('Pronunciation assessment error:', error);
+    res.status(500).json({ error: 'Assessment failed' });
   }
 });
 
