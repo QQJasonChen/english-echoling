@@ -11,6 +11,9 @@ let searchTimeout = null;
 let clipEndTime = null;
 let clipStartTime = null;
 let isLooping = localStorage.getItem('english-loop') === 'true';
+let autoPlayMode = localStorage.getItem('english-autoplay') === 'true';
+let autoPlayDelay = 3;
+let autoPlayInterval = null;
 let favorites = JSON.parse(localStorage.getItem('english-favorites') || '[]');
 let stats = JSON.parse(localStorage.getItem('english-stats') || '{"watched":0,"searches":0,"favorites":0,"shadowed":0}');
 let searchHistory = JSON.parse(localStorage.getItem('english-history') || '[]');
@@ -143,6 +146,10 @@ function checkClipEnd() {
     if (isLooping && !isShadowingMode) {
       player.seekTo(clipStartTime, true);
       player.playVideo();
+    } else if (autoPlayMode && !isShadowingMode) {
+      player.pauseVideo();
+      startAutoPlayCountdown();
+      return;
     } else {
       player.pauseVideo();
       return;
@@ -150,6 +157,69 @@ function checkClipEnd() {
   }
 
   requestAnimationFrame(checkClipEnd);
+}
+
+// Auto-play functions
+function startAutoPlayCountdown() {
+  if (currentIndex >= results.length - 1) return;
+
+  if (autoPlayInterval) clearInterval(autoPlayInterval);
+
+  let remaining = autoPlayDelay;
+  updateAutoPlayDisplay(remaining);
+
+  autoPlayInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(autoPlayInterval);
+      autoPlayInterval = null;
+      nextClip();
+    } else {
+      updateAutoPlayDisplay(remaining);
+    }
+  }, 1000);
+}
+
+function updateAutoPlayDisplay(seconds) {
+  const overlayEl = document.getElementById('autoPlayOverlay');
+  const countdownEl = document.getElementById('autoPlayCountdown');
+  if (overlayEl && countdownEl) {
+    countdownEl.textContent = seconds;
+    overlayEl.classList.remove('hidden');
+  }
+}
+
+function cancelAutoPlay() {
+  if (autoPlayInterval) {
+    clearInterval(autoPlayInterval);
+    autoPlayInterval = null;
+  }
+  const overlayEl = document.getElementById('autoPlayOverlay');
+  if (overlayEl) {
+    overlayEl.classList.add('hidden');
+  }
+}
+
+function toggleAutoPlay() {
+  autoPlayMode = !autoPlayMode;
+  localStorage.setItem('english-autoplay', autoPlayMode);
+  updateAutoPlayButton();
+  if (!autoPlayMode) cancelAutoPlay();
+}
+
+function updateAutoPlayButton() {
+  const btn = document.getElementById('autoPlayBtn');
+  if (btn) {
+    if (autoPlayMode) {
+      btn.classList.remove('bg-gray-700');
+      btn.classList.add('bg-green-600', 'text-white');
+      btn.innerHTML = '▶▶ Auto';
+    } else {
+      btn.classList.remove('bg-green-600', 'text-white');
+      btn.classList.add('bg-gray-700');
+      btn.innerHTML = '▶▶';
+    }
+  }
 }
 
 // ==========================================
@@ -618,6 +688,8 @@ function formatTime(seconds) {
 function playClip(index) {
   if (index < 0 || index >= results.length) return;
 
+  cancelAutoPlay();
+
   currentIndex = index;
   const clip = results[index];
 
@@ -922,6 +994,8 @@ document.getElementById('nextBtn').addEventListener('click', nextClip);
 document.getElementById('prevBtn').addEventListener('click', prevClip);
 document.getElementById('replayBtn').addEventListener('click', replayClip);
 document.getElementById('loopBtn').addEventListener('click', toggleLoop);
+document.getElementById('autoPlayBtn')?.addEventListener('click', toggleAutoPlay);
+updateAutoPlayButton();
 document.getElementById('randomBtn').addEventListener('click', playRandomClip);
 shadowingModeBtn.addEventListener('click', toggleShadowingMode);
 

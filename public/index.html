@@ -127,6 +127,10 @@
             <div id="clipContext" class="px-4 pb-3 text-center text-xs border-t border-gray-600 pt-2">
               <span class="text-gray-500">Video info will appear here</span>
             </div>
+            <!-- Auto-play countdown -->
+            <div id="autoPlayOverlay" class="hidden px-4 pb-3 text-center">
+              <span class="text-green-400 text-sm">▶▶ Next clip in <span id="autoPlayCountdown" class="font-bold">3</span>s</span>
+            </div>
           </div>
 
           <!-- Shadowing Mode Panel (hidden by default) -->
@@ -218,6 +222,9 @@
               </button>
               <button id="loopBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm text-gray-400" title="Loop OFF (L)">
                 🔁
+              </button>
+              <button id="autoPlayBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm" title="Auto-play next clip">
+                ▶▶
               </button>
               <button id="randomBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm" title="Random (D)">
                 🎲
