@@ -76,9 +76,36 @@ function createPlayer(videoId, startTime) {
     },
     events: {
       onReady: onPlayerReady,
-      onStateChange: onPlayerStateChange
+      onStateChange: onPlayerStateChange,
+      onError: onPlayerError
     }
   });
+}
+
+// Handle YouTube player errors (private/deleted videos)
+function onPlayerError(event) {
+  const errorCodes = {
+    2: 'Invalid video ID',
+    5: 'HTML5 player error',
+    100: 'Video not found (deleted)',
+    101: 'Video cannot be embedded',
+    150: 'Video cannot be embedded (private)'
+  };
+
+  const errorMsg = errorCodes[event.data] || `Playback error (${event.data})`;
+  console.warn('YouTube Error:', errorMsg);
+
+  // Show error message briefly
+  currentSubtitle.innerHTML = `<span class="text-red-400">⚠️ ${errorMsg} - Skipping to next...</span>`;
+
+  // Auto-skip to next clip after 1.5 seconds
+  setTimeout(() => {
+    if (currentIndex < results.length - 1) {
+      nextClip();
+    } else {
+      currentSubtitle.innerHTML = '<span class="text-gray-400">Reached last clip</span>';
+    }
+  }, 1500);
 }
 
 function onPlayerReady(event) {
