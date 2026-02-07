@@ -19,6 +19,7 @@ let stats = JSON.parse(localStorage.getItem('english-stats') || '{"watched":0,"s
 let searchHistory = JSON.parse(localStorage.getItem('english-history') || '[]');
 let currentStyle = localStorage.getItem('english-style') || 'natural';
 let playbackSpeed = parseFloat(localStorage.getItem('english-speed') || '1');
+let timeOffset = parseFloat(localStorage.getItem('english-time-offset') || '-0.3'); // Start earlier for better sync
 
 // Shadowing Mode State
 let isShadowingMode = false;
@@ -113,11 +114,15 @@ function onPlayerError(event) {
 
 function onPlayerReady(event) {
   event.target.setPlaybackRate(playbackSpeed);
-  event.target.seekTo(clipStartTime, true);
+
+  // Apply time offset for better sync (negative = start earlier)
+  const adjustedStartTime = Math.max(0, clipStartTime + timeOffset);
+
+  event.target.seekTo(adjustedStartTime, true);
 
   setTimeout(() => {
     if (player && player.seekTo) {
-      player.seekTo(clipStartTime, true);
+      player.seekTo(adjustedStartTime, true);
       player.setPlaybackRate(playbackSpeed);
       player.playVideo();
     }
@@ -1269,6 +1274,25 @@ function initSpeedControl() {
   });
 }
 
+// Time offset control for sync correction
+function initTimeOffsetControl() {
+  const slider = document.getElementById('timeOffsetSlider');
+  const valueDisplay = document.getElementById('timeOffsetValue');
+
+  if (!slider || !valueDisplay) return;
+
+  // Set initial value from localStorage
+  slider.value = timeOffset;
+  valueDisplay.textContent = `${timeOffset >= 0 ? '+' : ''}${timeOffset.toFixed(1)}s`;
+
+  slider.addEventListener('input', () => {
+    const newOffset = parseFloat(slider.value);
+    timeOffset = newOffset;
+    localStorage.setItem('english-time-offset', newOffset.toString());
+    valueDisplay.textContent = `${newOffset >= 0 ? '+' : ''}${newOffset.toFixed(1)}s`;
+  });
+}
+
 // ==========================================
 // Stats
 // ==========================================
@@ -1311,4 +1335,5 @@ updateStatsDisplay();
 initTabs();
 initStyleFilter();
 initSpeedControl();
+initTimeOffsetControl();
 updateLoopButton();
