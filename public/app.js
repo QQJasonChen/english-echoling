@@ -1326,6 +1326,220 @@ function bindHistoryButtons() {
 }
 
 // ==========================================
+// Anki-Style SRS System
+// ==========================================
+
+let ankiReviewQueue = [];
+let ankiCurrentIndex = 0;
+let ankiShowingAnswer = false;
+let ankiSessionStats = { reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 };
+
+function speakEnglish(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.rate = 0.9;
+  window.speechSynthesis.speak(utterance);
+}
+
+function startSRSReview() {
+  if (typeof ankiSRS === 'undefined') {
+    alert('SRS 系統尚未載入，請重新整理頁面');
+    return;
+  }
+
+  ankiReviewQueue = ankiSRS.getReviewQueue();
+
+  if (ankiReviewQueue.length === 0) {
+    alert('🎉 太棒了！今天沒有需要複習的卡片了！');
+    return;
+  }
+
+  ankiCurrentIndex = 0;
+  ankiShowingAnswer = false;
+  ankiSessionStats = { reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 };
+
+  document.getElementById('ankiReviewModal')?.classList.remove('hidden');
+  document.getElementById('ankiComplete')?.classList.add('hidden');
+  document.getElementById('ankiCardFront')?.classList.remove('hidden');
+  document.getElementById('ankiCardBack')?.classList.add('hidden');
+
+  updateAnkiQueueCounts();
+  showAnkiCard();
+}
+
+function updateAnkiQueueCounts() {
+  const remaining = ankiReviewQueue.length - ankiCurrentIndex;
+
+  let newCount = 0, learningCount = 0, reviewCount = 0;
+  for (let i = ankiCurrentIndex; i < ankiReviewQueue.length; i++) {
+    const card = ankiReviewQueue[i];
+    if (card.state === 0) newCount++;
+    else if (card.state === 1 || card.state === 3) learningCount++;
+    else reviewCount++;
+  }
+
+  document.getElementById('ankiNewCount').textContent = newCount;
+  document.getElementById('ankiLearningCount').textContent = learningCount;
+  document.getElementById('ankiReviewCount').textContent = reviewCount;
+
+  const progress = ankiCurrentIndex / ankiReviewQueue.length * 100;
+  document.getElementById('ankiProgressBar').style.width = `${progress}%`;
+}
+
+function showAnkiCard() {
+  if (ankiCurrentIndex >= ankiReviewQueue.length) {
+    showAnkiComplete();
+    return;
+  }
+
+  const card = ankiReviewQueue[ankiCurrentIndex];
+  const wordData = card.data;
+
+  if (!wordData) {
+    ankiCurrentIndex++;
+    showAnkiCard();
+    return;
+  }
+
+  ankiShowingAnswer = false;
+  document.getElementById('ankiCardFront')?.classList.remove('hidden');
+  document.getElementById('ankiCardBack')?.classList.add('hidden');
+
+  document.getElementById('ankiCardEmoji').textContent = wordData.emoji || '❓';
+  document.getElementById('ankiCardQuestion').textContent = '這個英文是什麼意思？';
+
+  document.getElementById('ankiCardEmojiBack').textContent = wordData.emoji || '';
+  document.getElementById('ankiCardWord').textContent = wordData.en;
+  document.getElementById('ankiCardTranslation').textContent = wordData.zh || wordData.en;
+  document.getElementById('ankiCardCategory').textContent = wordData.category || '';
+
+  const intervals = ankiSRS.getNextIntervals(card.id || card.word);
+  if (intervals) {
+    document.getElementById('ankiAgainInterval').textContent = intervals[1] || '1m';
+    document.getElementById('ankiHardInterval').textContent = intervals[2] || '6m';
+    document.getElementById('ankiGoodInterval').textContent = intervals[3] || '10m';
+    document.getElementById('ankiEasyInterval').textContent = intervals[4] || '4d';
+  }
+
+  updateAnkiQueueCounts();
+}
+
+function showAnkiAnswer() {
+  ankiShowingAnswer = true;
+  document.getElementById('ankiCardFront')?.classList.add('hidden');
+  document.getElementById('ankiCardBack')?.classList.remove('hidden');
+
+  speakEnglish(ankiReviewQueue[ankiCurrentIndex]?.word);
+}
+
+function answerAnkiCard(quality) {
+  if (!ankiShowingAnswer) return;
+
+  const card = ankiReviewQueue[ankiCurrentIndex];
+  ankiSRS.answerCard(card.id || card.word, quality);
+
+  ankiSessionStats.reviewed++;
+  if (quality === 1) ankiSessionStats.again++;
+  else if (quality === 2) ankiSessionStats.hard++;
+  else if (quality === 3) ankiSessionStats.good++;
+  else if (quality === 4) ankiSessionStats.easy++;
+
+  if (quality === 1) {
+    const updatedCard = ankiSRS.getCard(card.id || card.word);
+    ankiReviewQueue.push(updatedCard);
+  }
+
+  ankiCurrentIndex++;
+  showAnkiCard();
+}
+
+function showAnkiComplete() {
+  document.getElementById('ankiCardFront')?.classList.add('hidden');
+  document.getElementById('ankiCardBack')?.classList.add('hidden');
+  document.getElementById('ankiComplete')?.classList.remove('hidden');
+
+  document.getElementById('ankiReviewedToday').textContent = ankiSessionStats.reviewed;
+
+  const stats = ankiSRS.getOverallStats();
+  document.getElementById('ankiStatRetention').textContent = `${stats.retention}%`;
+  document.getElementById('ankiStatMature').textContent = stats.mature;
+  document.getElementById('ankiStatTotal').textContent = stats.total;
+}
+
+function closeAnkiReview() {
+  document.getElementById('ankiReviewModal')?.classList.add('hidden');
+}
+
+function showSRSStats() {
+  if (typeof ankiSRS === 'undefined') return;
+
+  const stats = ankiSRS.getOverallStats();
+  document.getElementById('srsStatTotal').textContent = stats.total;
+  document.getElementById('srsStatMature').textContent = stats.mature;
+  document.getElementById('srsStatRetention').textContent = `${stats.retention}%`;
+  document.getElementById('srsStatDue').textContent = stats.dueToday + stats.newRemaining;
+
+  const dist = ankiSRS.getIntervalDistribution();
+  const maxDist = Math.max(...Object.values(dist), 1);
+  document.getElementById('dist1d').style.height = `${dist['1d'] / maxDist * 100}%`;
+  document.getElementById('dist1w').style.height = `${dist['1w'] / maxDist * 100}%`;
+  document.getElementById('dist1m').style.height = `${dist['1m'] / maxDist * 100}%`;
+  document.getElementById('dist3m').style.height = `${dist['3m'] / maxDist * 100}%`;
+  document.getElementById('dist6m').style.height = `${dist['6m+'] / maxDist * 100}%`;
+
+  const forecast = ankiSRS.getForecast(7);
+  const maxForecast = Math.max(...forecast.map(f => f.due), 1);
+  const forecastEl = document.getElementById('srsForecast');
+  forecastEl.innerHTML = forecast.map((f, i) => `
+    <div class="flex-1 bg-gray-700 rounded relative overflow-hidden">
+      <div class="absolute bottom-0 w-full bg-orange-500 transition-all" style="height: ${f.due / maxForecast * 100}%"></div>
+      <div class="absolute bottom-1 w-full text-center text-xs">${i === 0 ? '今' : '+' + i}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('srsStatsModal')?.classList.remove('hidden');
+}
+
+function initAnkiReviewModal() {
+  document.getElementById('closeAnkiReview')?.addEventListener('click', closeAnkiReview);
+  document.getElementById('ankiCloseComplete')?.addEventListener('click', closeAnkiReview);
+  document.getElementById('ankiShowAnswer')?.addEventListener('click', showAnkiAnswer);
+  document.getElementById('closeSrsStats')?.addEventListener('click', () => {
+    document.getElementById('srsStatsModal')?.classList.add('hidden');
+  });
+
+  document.querySelectorAll('.anki-rating-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const quality = parseInt(btn.dataset.quality);
+      answerAnkiCard(quality);
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('ankiReviewModal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    if (!ankiShowingAnswer) {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        showAnkiAnswer();
+      }
+    } else {
+      if (e.key === '1') answerAnkiCard(1);
+      else if (e.key === '2') answerAnkiCard(2);
+      else if (e.key === '3') answerAnkiCard(3);
+      else if (e.key === '4') answerAnkiCard(4);
+      else if (e.code === 'Space') {
+        e.preventDefault();
+        speakEnglish(ankiReviewQueue[ankiCurrentIndex]?.word);
+      }
+    }
+  });
+}
+
+// ==========================================
 // Initialize
 // ==========================================
 
@@ -1337,3 +1551,4 @@ initStyleFilter();
 initSpeedControl();
 initTimeOffsetControl();
 updateLoopButton();
+initAnkiReviewModal();

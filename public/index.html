@@ -441,8 +441,177 @@
     </div>
   </main>
 
+  <!-- Anki-Style SRS Review Modal -->
+  <div id="ankiReviewModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button id="closeAnkiReview" class="text-gray-400 hover:text-white">✕</button>
+          <span class="text-sm font-medium">SRS 複習</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="text-blue-400"><span id="ankiNewCount">0</span> 新</span>
+          <span class="text-red-400"><span id="ankiLearningCount">0</span> 學習中</span>
+          <span class="text-green-400"><span id="ankiReviewCount">0</span> 複習</span>
+        </div>
+      </div>
+
+      <!-- Card Display -->
+      <div class="flex-1 p-6 flex flex-col items-center justify-center min-h-[300px]">
+        <!-- Front of Card -->
+        <div id="ankiCardFront" class="text-center">
+          <div id="ankiCardEmoji" class="text-8xl mb-4">🐕</div>
+          <div id="ankiCardQuestion" class="text-xl text-gray-300 mb-2">這個英文是什麼意思？</div>
+          <button id="ankiShowAnswer" class="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium">
+            顯示答案
+          </button>
+        </div>
+
+        <!-- Back of Card (hidden initially) -->
+        <div id="ankiCardBack" class="hidden text-center w-full">
+          <div id="ankiCardEmojiBack" class="text-6xl mb-2">🐕</div>
+          <div id="ankiCardWord" class="text-4xl font-bold text-orange-400 mb-2">dog</div>
+          <div id="ankiCardTranslation" class="text-xl text-gray-300 mb-1">狗</div>
+          <div id="ankiCardCategory" class="text-sm text-gray-500 mb-4">animals · 動物</div>
+
+          <!-- Example sentences if available -->
+          <div id="ankiCardExample" class="hidden mt-4 p-3 bg-gray-700/50 rounded-lg text-left text-sm">
+            <div class="text-gray-400 mb-1">例句：</div>
+            <div id="ankiExampleText" class="text-gray-200"></div>
+          </div>
+
+          <!-- Rating Buttons -->
+          <div class="mt-6 grid grid-cols-4 gap-2">
+            <button class="anki-rating-btn px-3 py-3 bg-red-600 hover:bg-red-500 rounded-lg transition" data-quality="1">
+              <div class="text-lg font-bold">重來</div>
+              <div id="ankiAgainInterval" class="text-xs opacity-70">1m</div>
+            </button>
+            <button class="anki-rating-btn px-3 py-3 bg-orange-600 hover:bg-orange-500 rounded-lg transition" data-quality="2">
+              <div class="text-lg font-bold">困難</div>
+              <div id="ankiHardInterval" class="text-xs opacity-70">6m</div>
+            </button>
+            <button class="anki-rating-btn px-3 py-3 bg-green-600 hover:bg-green-500 rounded-lg transition" data-quality="3">
+              <div class="text-lg font-bold">良好</div>
+              <div id="ankiGoodInterval" class="text-xs opacity-70">10m</div>
+            </button>
+            <button class="anki-rating-btn px-3 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg transition" data-quality="4">
+              <div class="text-lg font-bold">簡單</div>
+              <div id="ankiEasyInterval" class="text-xs opacity-70">4d</div>
+            </button>
+          </div>
+
+          <!-- Keyboard hints -->
+          <div class="mt-4 text-xs text-gray-500">
+            <kbd class="bg-gray-700 px-1.5 py-0.5 rounded">1</kbd> 重來 ·
+            <kbd class="bg-gray-700 px-1.5 py-0.5 rounded">2</kbd> 困難 ·
+            <kbd class="bg-gray-700 px-1.5 py-0.5 rounded">3</kbd> 良好 ·
+            <kbd class="bg-gray-700 px-1.5 py-0.5 rounded">4</kbd> 簡單 ·
+            <kbd class="bg-gray-700 px-1.5 py-0.5 rounded">空白</kbd> 發音
+          </div>
+        </div>
+
+        <!-- Completion Screen -->
+        <div id="ankiComplete" class="hidden text-center">
+          <div class="text-6xl mb-4">🎉</div>
+          <div class="text-2xl font-bold mb-2">今日複習完成！</div>
+          <div id="ankiCompleteStats" class="text-gray-400 mb-6">
+            複習了 <span id="ankiReviewedToday" class="text-green-400">0</span> 張卡片
+          </div>
+          <div class="grid grid-cols-3 gap-4 mb-6 text-center">
+            <div class="bg-gray-700/50 rounded-lg p-3">
+              <div id="ankiStatRetention" class="text-2xl font-bold text-green-400">--%</div>
+              <div class="text-xs text-gray-500">記憶率</div>
+            </div>
+            <div class="bg-gray-700/50 rounded-lg p-3">
+              <div id="ankiStatMature" class="text-2xl font-bold text-blue-400">0</div>
+              <div class="text-xs text-gray-500">成熟卡片</div>
+            </div>
+            <div class="bg-gray-700/50 rounded-lg p-3">
+              <div id="ankiStatTotal" class="text-2xl font-bold text-orange-400">0</div>
+              <div class="text-xs text-gray-500">總卡片數</div>
+            </div>
+          </div>
+          <button id="ankiCloseComplete" class="px-6 py-3 bg-orange-600 hover:bg-orange-500 rounded-lg font-medium">
+            完成！
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="h-1 bg-gray-700">
+        <div id="ankiProgressBar" class="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SRS Statistics Modal -->
+  <div id="srsStatsModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-800 rounded-xl max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold">📊 SRS 統計</h3>
+        <button id="closeSrsStats" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="bg-gray-700/50 rounded-lg p-4 text-center">
+          <div id="srsStatTotal" class="text-3xl font-bold text-orange-400">0</div>
+          <div class="text-sm text-gray-400">總卡片</div>
+        </div>
+        <div class="bg-gray-700/50 rounded-lg p-4 text-center">
+          <div id="srsStatMature" class="text-3xl font-bold text-green-400">0</div>
+          <div class="text-sm text-gray-400">成熟 (≥21天)</div>
+        </div>
+        <div class="bg-gray-700/50 rounded-lg p-4 text-center">
+          <div id="srsStatRetention" class="text-3xl font-bold text-blue-400">--%</div>
+          <div class="text-sm text-gray-400">記憶率</div>
+        </div>
+        <div class="bg-gray-700/50 rounded-lg p-4 text-center">
+          <div id="srsStatDue" class="text-3xl font-bold text-red-400">0</div>
+          <div class="text-sm text-gray-400">今日待複習</div>
+        </div>
+      </div>
+
+      <!-- Interval Distribution -->
+      <div class="mb-4">
+        <div class="text-sm text-gray-400 mb-2">間隔分佈</div>
+        <div class="flex gap-1 h-20">
+          <div class="flex-1 bg-gray-700 rounded relative overflow-hidden">
+            <div id="dist1d" class="absolute bottom-0 w-full bg-red-500 transition-all" style="height: 0%"></div>
+            <div class="absolute bottom-1 w-full text-center text-xs">1天</div>
+          </div>
+          <div class="flex-1 bg-gray-700 rounded relative overflow-hidden">
+            <div id="dist1w" class="absolute bottom-0 w-full bg-orange-500 transition-all" style="height: 0%"></div>
+            <div class="absolute bottom-1 w-full text-center text-xs">1週</div>
+          </div>
+          <div class="flex-1 bg-gray-700 rounded relative overflow-hidden">
+            <div id="dist1m" class="absolute bottom-0 w-full bg-yellow-500 transition-all" style="height: 0%"></div>
+            <div class="absolute bottom-1 w-full text-center text-xs">1月</div>
+          </div>
+          <div class="flex-1 bg-gray-700 rounded relative overflow-hidden">
+            <div id="dist3m" class="absolute bottom-0 w-full bg-green-500 transition-all" style="height: 0%"></div>
+            <div class="absolute bottom-1 w-full text-center text-xs">3月</div>
+          </div>
+          <div class="flex-1 bg-gray-700 rounded relative overflow-hidden">
+            <div id="dist6m" class="absolute bottom-0 w-full bg-blue-500 transition-all" style="height: 0%"></div>
+            <div class="absolute bottom-1 w-full text-center text-xs">6月+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forecast -->
+      <div>
+        <div class="text-sm text-gray-400 mb-2">未來 7 天預測</div>
+        <div id="srsForecast" class="flex gap-1 h-16">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="srs-anki.js"></script>
   <script src="app.js"></script>
   <script type="module" src="firebase-auth.js"></script>
 </body>
